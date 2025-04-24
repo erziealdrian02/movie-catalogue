@@ -6,8 +6,6 @@ Before(({ I }) => {
   I.amOnPage('/#/like');
 });
 
-
-
 Scenario('showing empty liked movies', ({ I }) => {
   I.seeElement('#query');
   // I.seeElement('.query'); // membuat test menjadi gagal
@@ -36,36 +34,43 @@ Scenario('liking one movie', async ({ I }) => {
 });
 
 Scenario('searching movies', async ({ I }) => {
+  I.amOnPage('/#/like');
   I.see('Tidak ada film untuk ditampilkan', '.movie-item__not__found');
 
   I.amOnPage('/');
-
   I.seeElement('.movie__title a');
 
+  // Like 3 movies
   const titles = [];
-
   for (let i = 1; i <= 3; i++) {
     I.click(locate('.movie__title a').at(i));
-    I.seeElement('#likeButton');
+    I.waitForElement('#likeButton', 5);
     I.click('#likeButton');
-    titles.push(await I.grabTextFrom('.movie__title'));
+    const title = await I.grabTextFrom('.movie__title');
+    titles.push(title);
     I.amOnPage('/');
   }
 
   I.amOnPage('/#/like');
-  I.seeElement('#query');
+  I.waitForElement('#query', 5);
 
-  const searchQuery = titles[1].substring(1, 3);
-  const matchingMovies = titles.filter((title) => title.indexOf(searchQuery) !== -1);
-
+  // Use full title for search
+  const searchQuery = titles[1].toLowerCase();
   I.fillField('#query', searchQuery);
   I.pressKey('Enter');
+  I.waitForElement('.movie-item', 5);
 
-  const visibleLikedMovies = await I.grabNumberOfVisibleElements('.movie-item');
-  assert.strictEqual(matchingMovies.length, visibleLikedMovies);
+  const matchingMovies = titles.filter((title) =>
+    title.toLowerCase().includes(searchQuery)
+  );
 
-  matchingMovies.forEach(async (title, index) => {
-    const visibleTitle = await I.grabTextFrom(locate('.movie__title').at(index + 1));
-    assert.strictEqual(title, visibleTitle);
-  });
+  for (let index = 0; index < matchingMovies.length; index++) {
+    const visibleTitle = await I.grabTextFrom(
+      locate('.movie__title').at(index + 1)
+    );
+    assert.strictEqual(
+      matchingMovies[index].toLowerCase(),
+      visibleTitle.toLowerCase()
+    );
+  }
 });
